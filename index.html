@@ -499,24 +499,21 @@ function renderFilmsGrid(){
 // ── Film detail modal ──
 // 檢查特定場次是否與目前已選的場次衝堂
 function checkConflicts(sid) {
-  if (!currentName) return [];
-  const myPrefs = allPrefs[currentName] || {};
+  const nameToUse = window.currentModalName || currentName; // 關鍵：根據選單對象檢查
+  if (!nameToUse) return [];
+  const myPrefs = allPrefs[nameToUse] || {};
   const targetS = screeningMap[sid].screening;
   const targetStart = timeToMin(targetS.time);
   const targetEnd = timeToMin(targetS.endTime);
 
   const conflicts = [];
   for (const [otherSid, pref] of Object.entries(myPrefs)) {
-    if (!pref || otherSid === sid) continue; // 略過未選或自己
-
+    if (!pref || otherSid === sid) continue; 
     const otherS = screeningMap[otherSid].screening;
     const otherFilm = screeningMap[otherSid].film;
-    
-    // 如果是同一天，就檢查時間是否重疊
     if (otherS.date === targetS.date) {
       const otherStart = timeToMin(otherS.time);
       const otherEnd = timeToMin(otherS.endTime);
-      // 邏輯：A的開始早於B的結束，且A的結束晚於B的開始，即算重疊
       if (targetStart < otherEnd && otherStart < targetEnd) {
         conflicts.push(`《${otherFilm.title_zh}》(${otherS.time})`);
       }
@@ -525,19 +522,18 @@ function checkConflicts(sid) {
   return conflicts;
 }
 
-// 更新彈跳視窗內的衝堂提示
 window.updateModalConflicts = () => {
+  const nameToUse = window.currentModalName || currentName;
   const conflictDivs = document.querySelectorAll('[id^="conflict-"]');
   conflictDivs.forEach(div => {
     const sid = div.id.replace('conflict-', '');
     const conflicts = checkConflicts(sid);
-    const myPrefs = allPrefs[currentName] || {};
+    const myPrefs = allPrefs[nameToUse] || {};
     const isSelected = !!myPrefs[sid];
 
     if (conflicts.length > 0) {
        div.innerHTML = `⚠️ 衝堂提示：與已選的 ${conflicts.join('、')} 時間重疊`;
        div.style.display = 'block';
-       // 已點選時顯示紅色，尚未點選但有衝堂時顯示橘色提醒
        div.style.color = isSelected ? 'var(--must)' : 'var(--want)'; 
     } else {
        div.style.display = 'none';
@@ -548,13 +544,33 @@ window.updateModalConflicts = () => {
 window.openFilmModal = filmId => {
   const film = filmMap[filmId];
   if (!film) return;
-  const myPrefs = allPrefs[currentName] || {};
+  
+// 1. 取得所有名單，確保「自己」一定在裡面（即使還沒選過任何片）
+  const allNamesSet = new Set(Object.keys(allPrefs));
+  if (currentName) allNamesSet.add(currentName);
+  const availableNames = Array.from(allNamesSet);
+
+  // 2. 智慧預設：如果在「個人時程」，預設開啟正在看的對象；否則預設為自己
+  let defaultName = currentName;
+  const pageSchedule = document.getElementById("page-schedule");
+  if (pageSchedule && pageSchedule.classList.contains("active") && currentScheduleSubTab === 'personal') {
+      defaultName = currentPersonalName || currentName;
+  }
+
+  // 3. 確定修改對象，並防呆確保名字一定在選單內
+  window.currentModalName = window.currentModalName || defaultName;
+  if (!availableNames.includes(window.currentModalName)) {
+      window.currentModalName = availableNames[0] || currentName;
+  }
+
+  const nameToUse = window.currentModalName;
+  const myPrefs = allPrefs[nameToUse] || {};
+
   document.getElementById("modal-cats").innerHTML = film.categories.map(c=>
     `<span class="cat-badge" style="background:${CAT_COLORS[c]||'#888'}">${esc(c)}</span>`
   ).join(" ");
-  const poster = film.poster_local
-    ? `<img class="modal-poster" src="${esc(film.poster_local)}" alt="${esc(film.title_zh)}" onerror="this.style.display='none'">`
-    : "";
+  
+  const poster = film.poster_local ? `<img class="modal-poster" src="${esc(film.poster_local)}" alt="${esc(film.title_zh)}" onerror="this.style.display='none'">` : "";
   const chips = [
     film.director_zh?`<span class="info-chip">導演：<strong>${esc(film.director_zh)}</strong></span>`:"",
     film.country?`<span class="info-chip">${esc(film.country)}</span>`:"",
@@ -562,12 +578,25 @@ window.openFilmModal = filmId => {
     film.duration?`<span class="info-chip">⏱ ${esc(film.duration)}</span>`:"",
     film.rating?`<span class="info-chip">🔞 ${esc(film.rating)}</span>`:"",
   ].filter(Boolean).join("");
-  const special = film.special_note
-    ? `<div class="modal-special">🏆 ${esc(film.special_note)}</div>` : "";
+  
+  const special = film.special_note ? `<div class="modal-special">🏆 ${esc(film.special_note)}</div>` : "";
   const synopsisId = `syn-${filmId}`;
-  const synopsis = film.synopsis
-    ? `<div class="modal-synopsis"><span id="${synopsisId}" style="display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;">${esc(film.synopsis).replace(/\n/g,"<br>")}</span>
+  const synopsis = film.synopsis ? `<div class="modal-synopsis"><span id="${synopsisId}" style="display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;">${esc(film.synopsis).replace(/\n/g,"<br>")}</span>
        <span class="modal-synopsis-toggle" onclick="expandSyn('${synopsisId}',this)">展開 ▾</span></div>` : "";
+
+  // 建立人員下拉選單 HTML (改用 availableNames 確保自己一定在裡面)
+  const nameOptions = availableNames.map(n => 
+    `<option value="${esc(n)}" ${n === nameToUse ? 'selected' : ''}>${esc(n)}</option>`
+  ).join("");
+  
+  const userSelectorHtml = availableNames.length > 0 ? `
+    <div style="margin: 16px 0 8px; font-size:13px; color:var(--text); background:var(--surface2); padding:10px 14px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border: 1px solid var(--border);">
+       <span>👤 目前修改對象：</span>
+       <select style="background:var(--bg); color:var(--accent); border:1px solid var(--border); padding:4px 8px; border-radius:6px; font-weight:700; outline:none;" onchange="changeModalName('${filmId}', this.value)">
+         ${nameOptions}
+       </select>
+    </div>
+  ` : "";
 
   const screeningRows = film.screenings.map(s=>{
     const pref = myPrefs[s.id] || null;
@@ -580,6 +609,7 @@ window.openFilmModal = filmId => {
     ].filter(Boolean).join("");
     const v = VENUE_MAP[s.venueId];
     const vColor = v?.color||"#888";
+    
     return `<div id="srow-${s.id}" class="screening-row${rowCls}" style="flex-wrap: wrap;">
       <div style="display:flex; width:100%; align-items:center; gap:8px;">
         <div>
@@ -601,16 +631,20 @@ window.openFilmModal = filmId => {
   }).join("");
 
   document.getElementById("modal-body").innerHTML =
-    poster +
-    `<div class="modal-title-zh">${esc(film.title_zh)}</div>` +
+    poster + `<div class="modal-title-zh">${esc(film.title_zh)}</div>` +
     (film.title_en?`<div class="modal-title-en">${esc(film.title_en)}</div>`:"") +
-    `<div class="modal-info">${chips}</div>` +
-    special + synopsis +
-    `<div class="modal-section-title">場次選擇</div>` +
-    screeningRows;
+    `<div class="modal-info">${chips}</div>` + special + synopsis +
+    userSelectorHtml + 
+    `<div class="modal-section-title">場次選擇</div>` + screeningRows;
 
   document.getElementById("modal-overlay").classList.add("open");
-  updateModalConflicts(); // 彈跳視窗一打開就預先檢查
+  updateModalConflicts(); 
+};
+
+// 新增：切換修改對象的函數
+window.changeModalName = (filmId, newName) => {
+   window.currentModalName = newName;
+   openFilmModal(filmId); // 重新打開彈跳視窗來更新按鈕與衝堂狀態
 };
 
 window.expandSyn = (id, btn) => {
@@ -620,20 +654,23 @@ window.expandSyn = (id, btn) => {
 };
 
 window.closeModal = e => { if (e.target===document.getElementById("modal-overlay")) closeModalBtn(); };
+
 window.closeModalBtn = () => {
   document.getElementById("modal-overlay").classList.remove("open");
-  // Refresh grid in case prefs changed
+  window.currentModalName = null; // 關鍵：清空記憶！這樣下次點開才會重新自動判斷要顯示誰
   if (document.getElementById("page-select").classList.contains("active")) renderFilmsGrid();
 };
 
-// ── Toggle pref ──
 window.togglePref = async (sid, value) => {
-  if (!currentName){ showToast("請先輸入名字"); return; }
-  if (!allPrefs[currentName]) allPrefs[currentName]={};
-  const prev = allPrefs[currentName][sid];
+  const nameToUse = window.currentModalName || currentName; // 關鍵：寫入選單對象
+  if (!nameToUse){ showToast("請先輸入名字"); return; }
+  if (!allPrefs[nameToUse]) allPrefs[nameToUse]={};
+  
+  const prev = allPrefs[nameToUse][sid];
   const next = prev===value ? null : value;
-  if (next===null) delete allPrefs[currentName][sid];
-  else allPrefs[currentName][sid]=next;
+  
+  if (next===null) delete allPrefs[nameToUse][sid];
+  else allPrefs[nameToUse][sid]=next;
 
   const row = document.getElementById(`srow-${sid}`);
   if (row){
@@ -644,9 +681,11 @@ window.togglePref = async (sid, value) => {
   }
   const info = screeningMap[sid];
   const label = next==="must"?"❤️ 必看":next==="want"?"⭐ 想看":"取消";
-  showToast(`${label}  ${info?.film.title_zh||""}`);
-  await writePref(currentName, sid, next);
-  updateModalConflicts(); // 每次點擊後重新計算
+  
+  // 提示訊息也會顯示你正在幫誰修改
+  showToast(`已為 ${esc(nameToUse)} ${label} ${info?.film.title_zh||""}`);
+  await writePref(nameToUse, sid, next);
+  updateModalConflicts(); 
 };
 
 // ── Schedule page ──
