@@ -257,7 +257,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   </div>
   <div class="home-content">
     <div class="home-logo">🐎🎥</div>
-    <div class="home-title">2026 金馬奇幻影展
+    <div class="home-title">2026 金馬奇幻影展</div>
     <div class="home-subtitle">選你想看的電影、偷看其他人要看什麼！</div>
 
     <div id="firebase-notice" class="config-notice" style="display:none;">
@@ -652,7 +652,6 @@ window.togglePref = async (sid, value) => {
 // ── Schedule page ──
 function renderSchedulePage(){
   const names = Object.keys(allPrefs);
-  // 如果沒有設定當前看誰，就預設看自己（或名單上第一個）
   if (!currentPersonalName && names.length > 0) {
      currentPersonalName = names.includes(currentName) ? currentName : names[0];
   }
@@ -662,17 +661,18 @@ function renderSchedulePage(){
     ? names.map(n=>`<span class="person-pill">${esc(n)}</span>`).join("")
     : "<span style='color:#666'>尚無人填寫</span>";
 
-  // 將「整合 / 個人」拉到最上層的標籤
+  // 將「整合 / 個人 / 搶票總表」拉到最上層的標籤
   const tabsEl = document.getElementById("schedule-tabs");
   tabsEl.innerHTML = `
     <button class="tab-btn${currentScheduleSubTab==='integrated'?' active':''}" onclick="switchSubTab('integrated')">整合時程</button>
     <button class="tab-btn${currentScheduleSubTab==='personal'?' active':''}" onclick="switchSubTab('personal')">個人時程</button>
+    <button class="tab-btn${currentScheduleSubTab==='tickets'?' active':''}" style="color:var(--must);" onclick="switchSubTab('tickets')">搶票總表</button>
   `;
 
   const contentEl = document.getElementById("schedule-content");
 
   if (currentScheduleSubTab === 'integrated') {
-     // === 整合時程畫面：顯示日期選單與時間軸 ===
+     // === 1. 整合時程畫面 ===
      let html = `<div class="sub-tabs" id="integrated-date-tabs">`;
      html += ALL_DATES.map((d,i)=>
        `<button class="sub-tab-btn${i===currentScheduleDayIdx?" active":""}" onclick="switchSchedDay(${i})">${esc(d.label)}</button>`
@@ -684,18 +684,14 @@ function renderSchedulePage(){
      ).join("");
      
      contentEl.innerHTML = html;
-
-     ALL_DATES.forEach((d,i)=>{
-        renderIntegratedDay(d.date, i);
-     });
-
+     ALL_DATES.forEach((d,i)=>{ renderIntegratedDay(d.date, i); });
      setTimeout(() => {
         const activeTab = document.querySelector("#integrated-date-tabs .sub-tab-btn.active");
         if (activeTab) activeTab.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
      }, 10);
 
-  } else {
-     // === 個人時程畫面：顯示人員選單與全天數列表 ===
+  } else if (currentScheduleSubTab === 'personal') {
+     // === 2. 個人時程畫面 ===
      let html = `<div class="person-tabs" id="personal-person-tabs">`;
      names.forEach((n)=>{
         html+=`<button class="person-tab-btn${n===currentPersonalName?" active":""}" onclick="switchPersonTab('${esc(n)}')">${esc(n)}</button>`;
@@ -704,13 +700,95 @@ function renderSchedulePage(){
      html += `<div id="personal-all-days" style="flex:1; overflow-y:auto; padding:14px; padding-bottom:40px;"></div>`;
      
      contentEl.innerHTML = html;
-     
-     if (names.length > 0) {
-         renderAllPersonalSchedule(currentPersonalName);
-     } else {
-         document.getElementById('personal-all-days').innerHTML = `<div class="schedule-empty">尚無人填寫</div>`;
-     }
+     if (names.length > 0) renderAllPersonalSchedule(currentPersonalName);
+     else document.getElementById('personal-all-days').innerHTML = `<div class="schedule-empty">尚無人填寫</div>`;
+
+  } else if (currentScheduleSubTab === 'tickets') {
+     // === 3. 搶票總表畫面 (新增) ===
+     let html = `<div id="ticket-summary-panel" style="flex:1; overflow-y:auto; padding:14px; padding-bottom:40px;"></div>`;
+     contentEl.innerHTML = html;
+     renderTicketSummary(); // 呼叫我們下一步要新增的函數
   }
+}
+
+// === 搶票總表渲染函數 ===
+function renderTicketSummary() {
+  const el = document.getElementById('ticket-summary-panel');
+  const summary = {}; // 存放每個場次的統計資料
+
+  // 1. 統整所有人的選片資料
+  Object.entries(allPrefs).forEach(([name, prefs]) => {
+    Object.entries(prefs).forEach(([sid, val]) => {
+       if (!val) return;
+       if (!summary[sid]) {
+          const sData = screeningMap[sid];
+          if (!sData) return;
+          summary[sid] = {
+             screening: sData.screening,
+             film: sData.film,
+             musts: [],
+             wants: []
+          };
+       }
+       if (val === "must") summary[sid].musts.push(name);
+       else if (val === "want") summary[sid].wants.push(name);
+    });
+  });
+
+  const sids = Object.keys(summary);
+  if (sids.length === 0) {
+     el.innerHTML = `<div class="schedule-empty">目前還沒有人選片喔</div>`;
+     return;
+  }
+
+  // 2. 依照「日期」與「時間」將場次排序，方便順著時間軸搶票
+  const sortedSids = sids.sort((a, b) => {
+     const sa = summary[a].screening;
+     const sb = summary[b].screening;
+     if (sa.date !== sb.date) return sa.date.localeCompare(sb.date);
+     return timeToMin(sa.time) - timeToMin(sb.time);
+  });
+
+  // 3. 繪製條列式總表
+  let html = "";
+  let currentDate = "";
+
+  sortedSids.forEach(sid => {
+     const data = summary[sid];
+     const s = data.screening;
+     const f = data.film;
+     
+     // 遇到新的一天，印出日期標題
+     if (s.date !== currentDate) {
+        currentDate = s.date;
+        const dateLabel = ALL_DATES.find(d => d.date === currentDate)?.label || currentDate;
+        html += `<div style="font-size:16px; font-weight:700; color:var(--accent); margin: 24px 0 10px 0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px;">📅 ${esc(dateLabel)}</div>`;
+     }
+
+     const totalTickets = data.musts.length + data.wants.length;
+     const v = VENUE_MAP[s.venueId];
+     const vColor = v?.color || "#888";
+
+     // 搶票總表卡片 HTML
+     html += `
+     <div style="background:var(--surface); border-radius:10px; padding:12px; margin-bottom:10px; border-left: 4px solid ${vColor}; display:flex; justify-content:space-between; align-items:center;">
+        <div style="flex:1;">
+           <div style="font-size:15px; font-weight:700; color:var(--text); line-height:1.3; margin-bottom:4px;">${esc(f.title_zh)}</div>
+           <div style="font-size:13px; color:var(--text2); margin-bottom:4px; font-weight:600;">${s.time} - ${s.endTime} ｜ ${esc(v?.name || s.venue)}</div>
+           <div style="font-size:12px; color:var(--text2); display:flex; flex-wrap:wrap; gap:6px;">
+              ${data.musts.length > 0 ? `<span style="background:rgba(232,60,108,.1); color:var(--must); padding:2px 6px; border-radius:4px;">必看: ${data.musts.join(", ")}</span>` : ""}
+              ${data.wants.length > 0 ? `<span style="background:rgba(232,134,42,.1); color:var(--want); padding:2px 6px; border-radius:4px;">想看: ${data.wants.join(", ")}</span>` : ""}
+           </div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--surface2); border-radius:8px; padding:10px 14px; min-width:65px; margin-left:12px;">
+           <div style="font-size:11px; color:var(--text2); margin-bottom:2px;">共需</div>
+           <div style="font-size:22px; font-weight:800; color:var(--accent);">${totalTickets}</div>
+           <div style="font-size:11px; color:var(--text2); margin-top:2px;">張票</div>
+        </div>
+     </div>`;
+  });
+
+  el.innerHTML = html;
 }
 
 window.switchSubTab = (panel) => {
