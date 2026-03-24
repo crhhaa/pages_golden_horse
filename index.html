@@ -285,9 +285,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     </div>
     <button class="back-btn" onclick="goHome()">← 返回</button>
   </div>
+  
+  <div style="padding: 12px 14px 0;">
+    <input type="text" id="film-search-input" placeholder="🔍 搜尋電影中文或英文名稱..." oninput="handleSearch(this.value)" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 15px; outline: none; transition: border-color 0.2s;">
+  </div>
+
   <div class="cat-chips" id="cat-chips"></div>
+  
   <div class="films-grid" id="films-grid"></div>
 </div>
+
 
 <!-- SCHEDULE PAGE -->
 <div id="page-schedule" class="page">
@@ -367,10 +374,17 @@ FILMS_DATA.forEach(f => f.screenings.forEach(s => { screeningMap[s.id] = {film:f
 let currentName = localStorage.getItem("ghff_name") || "";
 let allPrefs = {};
 let currentFilterCat = "全部";
+let currentSearchQuery = "";     // 👈 新增：用來儲存目前的搜尋字詞
 let db = null;
 let currentScheduleDayIdx = 0;           
 let currentScheduleSubTab = 'integrated'; 
 let currentPersonalName = ""; // 新增：記住當前個人時程正在看誰
+
+// 👈 新增：處理搜尋輸入的函數 (可以加在 window.switchCat 下方)
+window.handleSearch = (val) => {
+  currentSearchQuery = val.trim().toLowerCase(); // 轉成小寫方便比對
+  renderFilmsGrid(); // 重新渲染電影網格
+};
 
 // Firebase init
 const isConfigured = !FIREBASE_CONFIG.apiKey.startsWith("__");
@@ -470,12 +484,32 @@ function getMyPrefsForFilm(film){
   return null;
 }
 
+
 function renderFilmsGrid(){
-  const films = currentFilterCat==="全部"
-    ? FILMS_DATA
-    : FILMS_DATA.filter(f=>f.categories.includes(currentFilterCat));
   const el = document.getElementById("films-grid");
-  el.innerHTML = films.map(film=>{
+  const myPrefs = allPrefs[currentName]||{};
+  
+  // 新增：同時過濾「分類」與「搜尋關鍵字」
+  const filtered = FILMS_DATA.filter(f => {
+    // 檢查分類是否符合
+    const matchCat = currentFilterCat === "全部" || f.categories.includes(currentFilterCat);
+    
+    // 檢查中英文片名是否包含搜尋字詞 (如果沒有輸入搜尋字，就預設全部通過)
+    const matchSearch = currentSearchQuery === "" || 
+                        (f.title_zh && f.title_zh.toLowerCase().includes(currentSearchQuery)) || 
+                        (f.title_en && f.title_en.toLowerCase().includes(currentSearchQuery));
+                        
+    return matchCat && matchSearch;
+  });
+
+  // 如果找不到電影，顯示提示訊息
+  if(filtered.length === 0){
+    el.innerHTML = `<div class="schedule-empty">找不到符合「${esc(currentSearchQuery)}」的電影</div>`;
+    return;
+  }
+
+  // 👇 修正這裡：把 films 改成了 filtered
+  el.innerHTML = filtered.map(film=>{
     const pref = getMyPrefsForFilm(film);
     const cardCls = pref==="must"?" has-must":pref==="want"?" has-want":"";
     const prefIcon = pref==="must"?"❤️":pref==="want"?"⭐":"";
