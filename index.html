@@ -238,7 +238,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 /* Responsive */
 @media(min-width:600px){
   .films-grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));}
-  .home-content,.modal{max-width:600px;}
+  .home-content, .modal {
+    max-width: 600px;
+    margin: 0 auto; /* 新增：讓首頁內容與彈跳視窗在大螢幕時水平置中 */
+  }
 }
 </style>
 </head>
