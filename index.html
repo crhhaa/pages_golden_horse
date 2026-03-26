@@ -39,9 +39,38 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .name-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:10px;font-size:16px;width:100%;outline:none;}
 .name-input:focus{border-color:var(--accent);}
 .name-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;}
-.name-chip{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:20px;font-size:12px;cursor:pointer;transition:all .15s;}
+
+/* 確保名字標籤本身能正確撐開空間，且文字不斷行 */
+.name-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  /* 以下為新增 */
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;    /* 避免像「張凌赫的...」這種長名字在標籤內被折行 */
+}
+
 .name-chip:hover{border-color:var(--accent);color:var(--text);}
-.participants-info{font-size:12px;color:var(--text2);text-align:center;}
+
+.participants-info {
+  font-size: 13px;
+  color: var(--text2);
+  text-align: center;
+  /* 以下為新增 */
+  display: flex;
+  flex-wrap: wrap;        /* 允許超出範圍時自動換行 */
+  align-items: center;    /* 垂直置中 */
+  justify-content: center;/* 水平置中 */
+  gap: 8px;               /* 設定上下左右的安全距離 */
+  line-height: 1.5;
+}
+
 .participants-info strong{color:var(--text);}
 .btn{display:block;width:100%;max-width:360px;padding:14px;border-radius:12px;border:none;font-size:16px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;text-align:center;}
 .btn:active{transform:scale(.98);}
@@ -196,7 +225,19 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .schedule-empty{text-align:center;color:var(--text2);padding:60px 20px;font-size:14px;}
 .schedule-header-info{padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;}
 .persons-list{display:flex;flex-wrap:wrap;gap:4px;margin-left:6px;}
-.person-pill{padding:1px 8px;border-radius:10px;font-size:11px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);}
+
+.person-pill {
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  /* 以下為新增 */
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
 
 /* Timeline */
 .tl-scroll{overflow:auto;flex:1;}
@@ -256,9 +297,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     </div>
   </div>
   <div class="home-content">
-    <div class="home-logo">🐎🎥</div>
-    <div class="home-title">2026 金馬奇幻影展</div>
-    <div class="home-subtitle">選你想看的電影、偷看其他人要看什麼！</div>
+      <div class="home-logo">🐎🎥</div>
+      <div class="home-title">2026 金馬奇幻影展</div>  <div class="home-subtitle">選你想看的電影、偷看其他人要看什麼！</div>
 
     <div id="firebase-notice" class="config-notice" style="display:none;">
       ⚠️ 請先設定 Firebase：找到 FIREBASE_CONFIG 並填入你的專案設定。
@@ -285,22 +325,15 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     </div>
     <button class="back-btn" onclick="goHome()">← 返回</button>
   </div>
-  
-  <div style="padding: 12px 14px 0;">
-    <input type="text" id="film-search-input" placeholder="🔍 搜尋電影中文或英文名稱..." oninput="handleSearch(this.value)" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 15px; outline: none; transition: border-color 0.2s;">
-  </div>
-
   <div class="cat-chips" id="cat-chips"></div>
-  
   <div class="films-grid" id="films-grid"></div>
 </div>
-
 
 <!-- SCHEDULE PAGE -->
 <div id="page-schedule" class="page">
   <div class="header">
     <div>
-      <h1>📅 諸位ㄉ選擇們</h1>
+      <h1>📅 合併時程表</h1>
       <div class="header-sub"><span id="live-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#44dd88;animation:blink 1.5s infinite;margin-right:4px;"></span>即時同步</div>
     </div>
     <button class="back-btn" onclick="goHome()">← 返回</button>
@@ -374,17 +407,10 @@ FILMS_DATA.forEach(f => f.screenings.forEach(s => { screeningMap[s.id] = {film:f
 let currentName = localStorage.getItem("ghff_name") || "";
 let allPrefs = {};
 let currentFilterCat = "全部";
-let currentSearchQuery = "";     // 👈 新增：用來儲存目前的搜尋字詞
 let db = null;
 let currentScheduleDayIdx = 0;           
 let currentScheduleSubTab = 'integrated'; 
 let currentPersonalName = ""; // 新增：記住當前個人時程正在看誰
-
-// 👈 新增：處理搜尋輸入的函數 (可以加在 window.switchCat 下方)
-window.handleSearch = (val) => {
-  currentSearchQuery = val.trim().toLowerCase(); // 轉成小寫方便比對
-  renderFilmsGrid(); // 重新渲染電影網格
-};
 
 // Firebase init
 const isConfigured = !FIREBASE_CONFIG.apiKey.startsWith("__");
@@ -484,32 +510,12 @@ function getMyPrefsForFilm(film){
   return null;
 }
 
-
 function renderFilmsGrid(){
+  const films = currentFilterCat==="全部"
+    ? FILMS_DATA
+    : FILMS_DATA.filter(f=>f.categories.includes(currentFilterCat));
   const el = document.getElementById("films-grid");
-  const myPrefs = allPrefs[currentName]||{};
-  
-  // 新增：同時過濾「分類」與「搜尋關鍵字」
-  const filtered = FILMS_DATA.filter(f => {
-    // 檢查分類是否符合
-    const matchCat = currentFilterCat === "全部" || f.categories.includes(currentFilterCat);
-    
-    // 檢查中英文片名是否包含搜尋字詞 (如果沒有輸入搜尋字，就預設全部通過)
-    const matchSearch = currentSearchQuery === "" || 
-                        (f.title_zh && f.title_zh.toLowerCase().includes(currentSearchQuery)) || 
-                        (f.title_en && f.title_en.toLowerCase().includes(currentSearchQuery));
-                        
-    return matchCat && matchSearch;
-  });
-
-  // 如果找不到電影，顯示提示訊息
-  if(filtered.length === 0){
-    el.innerHTML = `<div class="schedule-empty">找不到符合「${esc(currentSearchQuery)}」的電影</div>`;
-    return;
-  }
-
-  // 👇 修正這裡：把 films 改成了 filtered
-  el.innerHTML = filtered.map(film=>{
+  el.innerHTML = films.map(film=>{
     const pref = getMyPrefsForFilm(film);
     const cardCls = pref==="must"?" has-must":pref==="want"?" has-want":"";
     const prefIcon = pref==="must"?"❤️":pref==="want"?"⭐":"";
@@ -533,21 +539,24 @@ function renderFilmsGrid(){
 // ── Film detail modal ──
 // 檢查特定場次是否與目前已選的場次衝堂
 function checkConflicts(sid) {
-  const nameToUse = window.currentModalName || currentName; // 關鍵：根據選單對象檢查
-  if (!nameToUse) return [];
-  const myPrefs = allPrefs[nameToUse] || {};
+  if (!currentName) return [];
+  const myPrefs = allPrefs[currentName] || {};
   const targetS = screeningMap[sid].screening;
   const targetStart = timeToMin(targetS.time);
   const targetEnd = timeToMin(targetS.endTime);
 
   const conflicts = [];
   for (const [otherSid, pref] of Object.entries(myPrefs)) {
-    if (!pref || otherSid === sid) continue; 
+    if (!pref || otherSid === sid) continue; // 略過未選或自己
+
     const otherS = screeningMap[otherSid].screening;
     const otherFilm = screeningMap[otherSid].film;
+    
+    // 如果是同一天，就檢查時間是否重疊
     if (otherS.date === targetS.date) {
       const otherStart = timeToMin(otherS.time);
       const otherEnd = timeToMin(otherS.endTime);
+      // 邏輯：A的開始早於B的結束，且A的結束晚於B的開始，即算重疊
       if (targetStart < otherEnd && otherStart < targetEnd) {
         conflicts.push(`《${otherFilm.title_zh}》(${otherS.time})`);
       }
@@ -556,18 +565,19 @@ function checkConflicts(sid) {
   return conflicts;
 }
 
+// 更新彈跳視窗內的衝堂提示
 window.updateModalConflicts = () => {
-  const nameToUse = window.currentModalName || currentName;
   const conflictDivs = document.querySelectorAll('[id^="conflict-"]');
   conflictDivs.forEach(div => {
     const sid = div.id.replace('conflict-', '');
     const conflicts = checkConflicts(sid);
-    const myPrefs = allPrefs[nameToUse] || {};
+    const myPrefs = allPrefs[currentName] || {};
     const isSelected = !!myPrefs[sid];
 
     if (conflicts.length > 0) {
        div.innerHTML = `⚠️ 衝堂提示：與已選的 ${conflicts.join('、')} 時間重疊`;
        div.style.display = 'block';
+       // 已點選時顯示紅色，尚未點選但有衝堂時顯示橘色提醒
        div.style.color = isSelected ? 'var(--must)' : 'var(--want)'; 
     } else {
        div.style.display = 'none';
@@ -575,63 +585,16 @@ window.updateModalConflicts = () => {
   });
 };
 
-// 更新彈跳視窗內的朋友選片名單
-window.updateModalFriends = () => {
-  const friendDivs = document.querySelectorAll('[id^="friends-"]');
-  friendDivs.forEach(div => {
-    const sid = div.id.replace('friends-', '');
-    const musts = [];
-    const wants = [];
-    
-    // 掃描所有人，看看誰也選了這個場次 (sid)
-    Object.entries(allPrefs).forEach(([uName, uPrefs]) => {
-        if (uPrefs[sid] === "must") musts.push(uName);
-        else if (uPrefs[sid] === "want") wants.push(uName);
-    });
-
-    if (musts.length > 0 || wants.length > 0) {
-        // 如果有人選，就畫出漂亮的膠囊標籤
-        const mText = musts.length > 0 ? `<span style="background:rgba(232,60,108,.1); color:var(--must); padding:2px 6px; border-radius:4px;">必看: ${musts.join(", ")}</span>` : "";
-        const wText = wants.length > 0 ? `<span style="background:rgba(232,134,42,.1); color:var(--want); padding:2px 6px; border-radius:4px;">想看: ${wants.join(", ")}</span>` : "";
-        div.innerHTML = mText + wText;
-        div.style.display = 'flex';
-    } else {
-        // 都沒人選就隱藏起來
-        div.style.display = 'none';
-    }
-  });
-};
-
 window.openFilmModal = filmId => {
   const film = filmMap[filmId];
   if (!film) return;
-  
-// 1. 取得所有名單，確保「自己」一定在裡面（即使還沒選過任何片）
-  const allNamesSet = new Set(Object.keys(allPrefs));
-  if (currentName) allNamesSet.add(currentName);
-  const availableNames = Array.from(allNamesSet);
-
-  // 2. 智慧預設：如果在「個人時程」，預設開啟正在看的對象；否則預設為自己
-  let defaultName = currentName;
-  const pageSchedule = document.getElementById("page-schedule");
-  if (pageSchedule && pageSchedule.classList.contains("active") && currentScheduleSubTab === 'personal') {
-      defaultName = currentPersonalName || currentName;
-  }
-
-  // 3. 確定修改對象，並防呆確保名字一定在選單內
-  window.currentModalName = window.currentModalName || defaultName;
-  if (!availableNames.includes(window.currentModalName)) {
-      window.currentModalName = availableNames[0] || currentName;
-  }
-
-  const nameToUse = window.currentModalName;
-  const myPrefs = allPrefs[nameToUse] || {};
-
+  const myPrefs = allPrefs[currentName] || {};
   document.getElementById("modal-cats").innerHTML = film.categories.map(c=>
     `<span class="cat-badge" style="background:${CAT_COLORS[c]||'#888'}">${esc(c)}</span>`
   ).join(" ");
-  
-  const poster = film.poster_local ? `<img class="modal-poster" src="${esc(film.poster_local)}" alt="${esc(film.title_zh)}" onerror="this.style.display='none'">` : "";
+  const poster = film.poster_local
+    ? `<img class="modal-poster" src="${esc(film.poster_local)}" alt="${esc(film.title_zh)}" onerror="this.style.display='none'">`
+    : "";
   const chips = [
     film.director_zh?`<span class="info-chip">導演：<strong>${esc(film.director_zh)}</strong></span>`:"",
     film.country?`<span class="info-chip">${esc(film.country)}</span>`:"",
@@ -639,25 +602,12 @@ window.openFilmModal = filmId => {
     film.duration?`<span class="info-chip">⏱ ${esc(film.duration)}</span>`:"",
     film.rating?`<span class="info-chip">🔞 ${esc(film.rating)}</span>`:"",
   ].filter(Boolean).join("");
-  
-  const special = film.special_note ? `<div class="modal-special">🏆 ${esc(film.special_note)}</div>` : "";
+  const special = film.special_note
+    ? `<div class="modal-special">🏆 ${esc(film.special_note)}</div>` : "";
   const synopsisId = `syn-${filmId}`;
-  const synopsis = film.synopsis ? `<div class="modal-synopsis"><span id="${synopsisId}" style="display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;">${esc(film.synopsis).replace(/\n/g,"<br>")}</span>
+  const synopsis = film.synopsis
+    ? `<div class="modal-synopsis"><span id="${synopsisId}" style="display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;">${esc(film.synopsis).replace(/\n/g,"<br>")}</span>
        <span class="modal-synopsis-toggle" onclick="expandSyn('${synopsisId}',this)">展開 ▾</span></div>` : "";
-
-  // 建立人員下拉選單 HTML (改用 availableNames 確保自己一定在裡面)
-  const nameOptions = availableNames.map(n => 
-    `<option value="${esc(n)}" ${n === nameToUse ? 'selected' : ''}>${esc(n)}</option>`
-  ).join("");
-  
-  const userSelectorHtml = availableNames.length > 0 ? `
-    <div style="margin: 16px 0 8px; font-size:13px; color:var(--text); background:var(--surface2); padding:10px 14px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border: 1px solid var(--border);">
-       <span>👤 目前修改對象：</span>
-       <select style="background:var(--bg); color:var(--accent); border:1px solid var(--border); padding:4px 8px; border-radius:6px; font-weight:700; outline:none;" onchange="changeModalName('${filmId}', this.value)">
-         ${nameOptions}
-       </select>
-    </div>
-  ` : "";
 
   const screeningRows = film.screenings.map(s=>{
     const pref = myPrefs[s.id] || null;
@@ -670,7 +620,6 @@ window.openFilmModal = filmId => {
     ].filter(Boolean).join("");
     const v = VENUE_MAP[s.venueId];
     const vColor = v?.color||"#888";
-    
     return `<div id="srow-${s.id}" class="screening-row${rowCls}" style="flex-wrap: wrap;">
       <div style="display:flex; width:100%; align-items:center; gap:8px;">
         <div>
@@ -687,28 +636,21 @@ window.openFilmModal = filmId => {
           <button class="${wantCls}" onclick="togglePref('${s.id}','want')">想看</button>
         </div>
       </div>
-      <div id="friends-${s.id}" style="width:100%; font-size:11px; display:none; margin-top:2px; padding-top:4px; border-top:1px dashed rgba(255,255,255,0.1); flex-wrap:wrap; gap:6px;"></div>
-      
       <div id="conflict-${s.id}" style="width:100%; font-size:11px; display:none; margin-top:2px; padding-top:4px; border-top:1px dashed rgba(255,255,255,0.1);"></div>
     </div>`;
   }).join("");
 
   document.getElementById("modal-body").innerHTML =
-    poster + `<div class="modal-title-zh">${esc(film.title_zh)}</div>` +
+    poster +
+    `<div class="modal-title-zh">${esc(film.title_zh)}</div>` +
     (film.title_en?`<div class="modal-title-en">${esc(film.title_en)}</div>`:"") +
-    `<div class="modal-info">${chips}</div>` + special + synopsis +
-    userSelectorHtml + 
-    `<div class="modal-section-title">場次選擇</div>` + screeningRows;
+    `<div class="modal-info">${chips}</div>` +
+    special + synopsis +
+    `<div class="modal-section-title">場次選擇</div>` +
+    screeningRows;
 
   document.getElementById("modal-overlay").classList.add("open");
-  updateModalConflicts(); 
-  updateModalFriends(); // 👈 新增這行：打開時預先抓取朋友名單
-};
-
-// 新增：切換修改對象的函數
-window.changeModalName = (filmId, newName) => {
-   window.currentModalName = newName;
-   openFilmModal(filmId); // 重新打開彈跳視窗來更新按鈕與衝堂狀態
+  updateModalConflicts(); // 彈跳視窗一打開就預先檢查
 };
 
 window.expandSyn = (id, btn) => {
@@ -718,23 +660,20 @@ window.expandSyn = (id, btn) => {
 };
 
 window.closeModal = e => { if (e.target===document.getElementById("modal-overlay")) closeModalBtn(); };
-
 window.closeModalBtn = () => {
   document.getElementById("modal-overlay").classList.remove("open");
-  window.currentModalName = null; // 關鍵：清空記憶！這樣下次點開才會重新自動判斷要顯示誰
+  // Refresh grid in case prefs changed
   if (document.getElementById("page-select").classList.contains("active")) renderFilmsGrid();
 };
 
+// ── Toggle pref ──
 window.togglePref = async (sid, value) => {
-  const nameToUse = window.currentModalName || currentName; // 關鍵：寫入選單對象
-  if (!nameToUse){ showToast("請先輸入名字"); return; }
-  if (!allPrefs[nameToUse]) allPrefs[nameToUse]={};
-  
-  const prev = allPrefs[nameToUse][sid];
+  if (!currentName){ showToast("請先輸入名字"); return; }
+  if (!allPrefs[currentName]) allPrefs[currentName]={};
+  const prev = allPrefs[currentName][sid];
   const next = prev===value ? null : value;
-  
-  if (next===null) delete allPrefs[nameToUse][sid];
-  else allPrefs[nameToUse][sid]=next;
+  if (next===null) delete allPrefs[currentName][sid];
+  else allPrefs[currentName][sid]=next;
 
   const row = document.getElementById(`srow-${sid}`);
   if (row){
@@ -745,17 +684,15 @@ window.togglePref = async (sid, value) => {
   }
   const info = screeningMap[sid];
   const label = next==="must"?"❤️ 必看":next==="want"?"⭐ 想看":"取消";
-  
-  // 提示訊息也會顯示你正在幫誰修改
-  showToast(`已為 ${esc(nameToUse)} ${label} ${info?.film.title_zh||""}`);
-  await writePref(nameToUse, sid, next);
-  updateModalConflicts(); 
-  updateModalFriends(); // 👈 新增這行：點擊後立刻更新名單
+  showToast(`${label}  ${info?.film.title_zh||""}`);
+  await writePref(currentName, sid, next);
+  updateModalConflicts(); // 每次點擊後重新計算
 };
 
 // ── Schedule page ──
 function renderSchedulePage(){
   const names = Object.keys(allPrefs);
+  // 如果沒有設定當前看誰，就預設看自己（或名單上第一個）
   if (!currentPersonalName && names.length > 0) {
      currentPersonalName = names.includes(currentName) ? currentName : names[0];
   }
@@ -765,18 +702,17 @@ function renderSchedulePage(){
     ? names.map(n=>`<span class="person-pill">${esc(n)}</span>`).join("")
     : "<span style='color:#666'>尚無人填寫</span>";
 
-  // 將「整合 / 個人 / 搶票總表」拉到最上層的標籤
+  // 將「整合 / 個人」拉到最上層的標籤
   const tabsEl = document.getElementById("schedule-tabs");
   tabsEl.innerHTML = `
     <button class="tab-btn${currentScheduleSubTab==='integrated'?' active':''}" onclick="switchSubTab('integrated')">整合時程</button>
     <button class="tab-btn${currentScheduleSubTab==='personal'?' active':''}" onclick="switchSubTab('personal')">個人時程</button>
-    <button class="tab-btn${currentScheduleSubTab==='tickets'?' active':''}" style="color:var(--must);" onclick="switchSubTab('tickets')">搶票總表</button>
   `;
 
   const contentEl = document.getElementById("schedule-content");
 
   if (currentScheduleSubTab === 'integrated') {
-     // === 1. 整合時程畫面 ===
+     // === 整合時程畫面：顯示日期選單與時間軸 ===
      let html = `<div class="sub-tabs" id="integrated-date-tabs">`;
      html += ALL_DATES.map((d,i)=>
        `<button class="sub-tab-btn${i===currentScheduleDayIdx?" active":""}" onclick="switchSchedDay(${i})">${esc(d.label)}</button>`
@@ -788,14 +724,18 @@ function renderSchedulePage(){
      ).join("");
      
      contentEl.innerHTML = html;
-     ALL_DATES.forEach((d,i)=>{ renderIntegratedDay(d.date, i); });
+
+     ALL_DATES.forEach((d,i)=>{
+        renderIntegratedDay(d.date, i);
+     });
+
      setTimeout(() => {
         const activeTab = document.querySelector("#integrated-date-tabs .sub-tab-btn.active");
         if (activeTab) activeTab.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
      }, 10);
 
-  } else if (currentScheduleSubTab === 'personal') {
-     // === 2. 個人時程畫面 ===
+  } else {
+     // === 個人時程畫面：顯示人員選單與全天數列表 ===
      let html = `<div class="person-tabs" id="personal-person-tabs">`;
      names.forEach((n)=>{
         html+=`<button class="person-tab-btn${n===currentPersonalName?" active":""}" onclick="switchPersonTab('${esc(n)}')">${esc(n)}</button>`;
@@ -804,132 +744,13 @@ function renderSchedulePage(){
      html += `<div id="personal-all-days" style="flex:1; overflow-y:auto; padding:14px; padding-bottom:40px;"></div>`;
      
      contentEl.innerHTML = html;
-     if (names.length > 0) renderAllPersonalSchedule(currentPersonalName);
-     else document.getElementById('personal-all-days').innerHTML = `<div class="schedule-empty">尚無人填寫</div>`;
-
-  } else if (currentScheduleSubTab === 'tickets') {
-     // === 3. 搶票總表畫面 (新增) ===
-     let html = `<div id="ticket-summary-panel" style="flex:1; overflow-y:auto; padding:14px; padding-bottom:40px;"></div>`;
-     contentEl.innerHTML = html;
-     renderTicketSummary(); // 呼叫我們下一步要新增的函數
+     
+     if (names.length > 0) {
+         renderAllPersonalSchedule(currentPersonalName);
+     } else {
+         document.getElementById('personal-all-days').innerHTML = `<div class="schedule-empty">尚無人填寫</div>`;
+     }
   }
-}
-
-// === 搶票總表渲染函數 ===
-// === 搶票總表渲染函數 ===
-function renderTicketSummary() {
-  const el = document.getElementById('ticket-summary-panel');
-  const summary = {}; 
-
-  // 1. 統整所有人的選片資料
-  Object.entries(allPrefs).forEach(([name, prefs]) => {
-    Object.entries(prefs).forEach(([sid, val]) => {
-       if (!val) return;
-       if (!summary[sid]) {
-          const sData = screeningMap[sid];
-          if (!sData) return;
-          summary[sid] = {
-             screening: sData.screening,
-             film: sData.film,
-             musts: [],
-             wants: []
-          };
-       }
-       if (val === "must") summary[sid].musts.push(name);
-       else if (val === "want") summary[sid].wants.push(name);
-    });
-  });
-
-  const sids = Object.keys(summary);
-  
-  // 2. 準備搶票倒數計時器的橫幅 HTML
-  let html = `
-  <div style="background:linear-gradient(145deg, var(--surface), var(--surface2)); border: 1px solid var(--accent); border-radius:12px; padding:18px; margin-bottom:20px; text-align:center; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-     <div style="color:var(--text2); font-size:13px; margin-bottom:6px; font-weight:600;">⏳ 距離 3.29（日）13:00 搶票還剩</div>
-     <div id="ticket-countdown" style="font-size:26px; font-weight:800; color:var(--accent); font-variant-numeric: tabular-nums; letter-spacing:1px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">計算中...</div>
-  </div>`;
-
-  // 3. 繪製條列式總表
-  if (sids.length === 0) {
-     el.innerHTML = html + `<div class="schedule-empty">目前還沒有人選片喔</div>`;
-  } else {
-     const sortedSids = sids.sort((a, b) => {
-        const sa = summary[a].screening;
-        const sb = summary[b].screening;
-        if (sa.date !== sb.date) return sa.date.localeCompare(sb.date);
-        return timeToMin(sa.time) - timeToMin(sb.time);
-     });
-
-     let currentDate = "";
-
-     sortedSids.forEach(sid => {
-        const data = summary[sid];
-        const s = data.screening;
-        const f = data.film;
-        
-        if (s.date !== currentDate) {
-           currentDate = s.date;
-           const dateLabel = ALL_DATES.find(d => d.date === currentDate)?.label || currentDate;
-           html += `<div style="font-size:16px; font-weight:700; color:var(--accent); margin: 24px 0 10px 0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px;">📅 ${esc(dateLabel)}</div>`;
-        }
-
-        const totalTickets = data.musts.length + data.wants.length;
-        const v = VENUE_MAP[s.venueId];
-        const vColor = v?.color || "#888";
-
-        html += `
-        <div style="background:var(--surface); border-radius:10px; padding:12px; margin-bottom:10px; border-left: 4px solid ${vColor}; display:flex; justify-content:space-between; align-items:center;">
-           <div style="flex:1;">
-              <div style="font-size:15px; font-weight:700; color:var(--text); line-height:1.3; margin-bottom:4px;">${esc(f.title_zh)}</div>
-              <div style="font-size:13px; color:var(--text2); margin-bottom:4px; font-weight:600;">${s.time} - ${s.endTime} ｜ ${esc(v?.name || s.venue)}</div>
-              <div style="font-size:12px; color:var(--text2); display:flex; flex-wrap:wrap; gap:6px;">
-                 ${data.musts.length > 0 ? `<span style="background:rgba(232,60,108,.1); color:var(--must); padding:2px 6px; border-radius:4px;">必看: ${data.musts.join(", ")}</span>` : ""}
-                 ${data.wants.length > 0 ? `<span style="background:rgba(232,134,42,.1); color:var(--want); padding:2px 6px; border-radius:4px;">想看: ${data.wants.join(", ")}</span>` : ""}
-              </div>
-           </div>
-           <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--surface2); border-radius:8px; padding:10px 14px; min-width:65px; margin-left:12px;">
-              <div style="font-size:11px; color:var(--text2); margin-bottom:2px;">共需</div>
-              <div style="font-size:22px; font-weight:800; color:var(--accent);">${totalTickets}</div>
-              <div style="font-size:11px; color:var(--text2); margin-top:2px;">張票</div>
-           </div>
-        </div>`;
-     });
-
-     el.innerHTML = html;
-  }
-
-  // 4. 啟動倒數計時器邏輯
-  if (window.ticketCountdownInterval) clearInterval(window.ticketCountdownInterval);
-  const targetDate = new Date("2026-03-29T13:00:00").getTime();
-  
-  const updateCountdown = () => {
-      const timerEl = document.getElementById("ticket-countdown");
-      // 如果切換到其他分頁，元素不見了，就自動清除計時器節省效能
-      if (!timerEl) {
-          if (window.ticketCountdownInterval) clearInterval(window.ticketCountdownInterval);
-          return;
-      }
-      
-      const now = new Date().getTime();
-      const distance = targetDate - now;
-      
-      if (distance < 0) {
-          timerEl.innerHTML = "🔥 搶票已開始！祝你好運！";
-          timerEl.style.color = "var(--must)";
-          if (window.ticketCountdownInterval) clearInterval(window.ticketCountdownInterval);
-          return;
-      }
-      
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
-      const minutes = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
-      const seconds = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
-      
-      timerEl.innerHTML = `${days} 天 ${hours} 時 ${minutes} 分 ${seconds} 秒`;
-  };
-  
-  updateCountdown(); // 執行第一次避免畫面閃爍
-  window.ticketCountdownInterval = setInterval(updateCountdown, 1000); // 啟動每秒跳動
 }
 
 window.switchSubTab = (panel) => {
@@ -1058,27 +879,22 @@ function renderAllPersonalSchedule(name) {
      return;
   }
 
-  // 1. 計算總場次與重複場次
-  const totalCount = myAllSlots.length;
   const filmCounts = {};
   myAllSlots.forEach(s => { filmCounts[s.film.id] = (filmCounts[s.film.id] || 0) + 1; });
-  
-  let duplicateCount = 0;
-  Object.values(filmCounts).forEach(count => {
-     if (count > 1) duplicateCount += (count - 1); 
-  });
 
-  let conflictCount = 0;
-  let daysHtml = "";
+  let html = "";
   
+  // 依序跑過每一天
   ALL_DATES.forEach(dateObj => {
      const mySlots = myAllSlots.filter(s => s.date === dateObj.date);
-     if (mySlots.length === 0) return; 
+     if (mySlots.length === 0) return; // 這天沒選片就跳過
 
-     daysHtml += `<div style="font-size:16px; font-weight:700; color:var(--accent); margin: 24px 0 10px 0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px;">📅 ${esc(dateObj.label)}</div>`;
+     // 加上明顯的日期分隔標題
+     html += `<div style="font-size:16px; font-weight:700; color:var(--accent); margin: 24px 0 10px 0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px;">📅 ${esc(dateObj.label)}</div>`;
 
      mySlots.sort((a, b) => timeToMin(a.time) - timeToMin(b.time));
 
+     // 衝堂分群邏輯
      const groups = [];
      mySlots.forEach(s => {
          if (groups.length === 0) {
@@ -1094,16 +910,15 @@ function renderAllPersonalSchedule(name) {
          }
      });
 
+     // 渲染卡片
      groups.forEach(group => {
          const isConflict = group.length > 1;
-         if (isConflict) conflictCount += group.length;
-
          const borderCol = isConflict ? "var(--must)" : "var(--border)";
          const conflictNotice = isConflict ? `<div style="color:var(--must); font-size:12px; font-weight:700; margin-bottom:8px;">⚠️ 衝堂警告：同時段有 ${group.length} 部電影</div>` : "";
          
-         daysHtml += `<div style="background:var(--surface2); border: 1px solid ${borderCol}; border-radius:12px; padding:12px; margin-bottom:12px;">`;
-         daysHtml += conflictNotice;
-         daysHtml += `<div style="display:flex; gap:8px; overflow-x:auto; scrollbar-width:none;">`;
+         html += `<div style="background:var(--surface2); border: 1px solid ${borderCol}; border-radius:12px; padding:12px; margin-bottom:12px;">`;
+         html += conflictNotice;
+         html += `<div style="display:flex; gap:8px; overflow-x:auto; scrollbar-width:none;">`;
          
          group.forEach(s => {
              const pref = myPrefs[s.id];
@@ -1112,62 +927,21 @@ function renderAllPersonalSchedule(name) {
              const isDuplicate = filmCounts[s.film.id] > 1;
              const dupWarning = isDuplicate ? `<div style="color:#F59E0B; font-size:11px; font-weight:700; margin-top:6px;">⚠️ 跨場次重複選取</div>` : "";
              
-             // === 新增：抓出「其他人」的選片狀況 ===
-             const otherMusts = [];
-             const otherWants = [];
-             Object.entries(allPrefs).forEach(([uName, uPrefs]) => {
-                 // 排除目前正在看的人自己，只抓別人的資料
-                 if (uName !== name && uPrefs[s.id]) { 
-                     if (uPrefs[s.id] === "must") otherMusts.push(uName);
-                     else if (uPrefs[s.id] === "want") otherWants.push(uName);
-                 }
-             });
-             
-             let othersHtml = "";
-             if (otherMusts.length > 0 || otherWants.length > 0) {
-                 othersHtml += `<div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:4px;">`;
-                 if (otherMusts.length > 0) othersHtml += `<span style="font-size:10px; background:rgba(232,60,108,.1); color:var(--must); padding:2px 4px; border-radius:4px;">必看: ${otherMusts.join(", ")}</span>`;
-                 if (otherWants.length > 0) othersHtml += `<span style="font-size:10px; background:rgba(232,134,42,.1); color:var(--want); padding:2px 4px; border-radius:4px;">想看: ${otherWants.join(", ")}</span>`;
-                 othersHtml += `</div>`;
-             }
-             // ===================================
-             
-             daysHtml += `
+             html += `
              <div style="flex: 1; min-width: 140px; background:var(--surface); border-radius:8px; padding:10px; border-left: 4px solid ${vColor}; cursor:pointer;" onclick="openFilmModal('${s.film.id}')">
                  <div style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:4px; line-height:1.3;">${esc(s.film.title_zh)}</div>
                  <div style="font-size:12px; color:var(--text2); font-weight:600;">${s.time} - ${s.endTime}</div>
                  <div style="font-size:11px; color:${vColor}; margin-top:2px;">${esc(v?.name || s.venue)}</div>
                  <div class="tl-badge ${pref}" style="margin-top:6px;">${pref==="must"?"必看":"想看"}</div>
-                 ${othersHtml} ${dupWarning}
+                 ${dupWarning}
              </div>`;
          });
          
-         daysHtml += `</div></div>`;
+         html += `</div></div>`;
      });
   });
 
-  // 2. 組合頂部統計儀表板 HTML
-  let summaryHtml = `
-  <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 14px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
-     <div style="flex:1;">
-        <div style="font-size:11px; color:var(--text2); margin-bottom:4px;">總共選取</div>
-        <div style="font-size:24px; font-weight:800; color:var(--text);">${totalCount} <span style="font-size:12px; font-weight:normal; color:var(--text2);">場</span></div>
-     </div>
-     <div style="width:1px; height:36px; background:var(--border);"></div>
-     <div style="flex:1;">
-        <div style="font-size:11px; color:var(--text2); margin-bottom:4px;">重複選取</div>
-        <div style="font-size:24px; font-weight:800; color:${duplicateCount > 0 ? '#F59E0B' : 'var(--text)'};">${duplicateCount} <span style="font-size:12px; font-weight:normal; color:var(--text2);">場</span></div>
-     </div>
-     <div style="width:1px; height:36px; background:var(--border);"></div>
-     <div style="flex:1;">
-        <div style="font-size:11px; color:var(--text2); margin-bottom:4px;">衝堂牽涉</div>
-        <div style="font-size:24px; font-weight:800; color:${conflictCount > 0 ? 'var(--must)' : 'var(--text)'};">${conflictCount} <span style="font-size:12px; font-weight:normal; color:var(--text2);">場</span></div>
-     </div>
-  </div>
-  `;
-
-  // 3. 把儀表板跟底下的卡片合併輸出
-  el.innerHTML = summaryHtml + daysHtml;
+  el.innerHTML = html;
 }
 
 </script>
